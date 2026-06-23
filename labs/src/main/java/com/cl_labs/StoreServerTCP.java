@@ -15,10 +15,16 @@ public class StoreServerTCP {
     private volatile boolean isRunning = false;
     private final ProtocolHandler protocolHandler = new ProtocolHandler();
 
+    private Processor processor;
+
+    public void setProcessor(Processor processor) {
+        this.processor = processor;
+    }
+
     public void start(int port) throws IOException {
         serverSocket = new ServerSocket(port);
         isRunning = true;
-        
+
         new Thread(() -> {
             while (isRunning) {
                 try {
@@ -58,7 +64,13 @@ public class StoreServerTCP {
 
                 DecodedMessage msg = protocolHandler.decode(fullPacket);
                 
-                byte[] response = protocolHandler.encode((byte) 2, msg.getbPktId(), 200, 0, "ACK".getBytes());
+                byte[] response;
+                if (processor != null) {
+                    response = processor.processMessage(msg);
+                } else {
+                    response = protocolHandler.encode((byte) 2, msg.getbPktId(), 200, 0, "ACK".getBytes());
+                }
+
                 out.write(response);
                 out.flush();
             }
